@@ -1,12 +1,14 @@
 const bcrypt = require("bcryptjs");
-const express = require('express')
-const app = express()
-const mongoose = require("mongoose")
-const cors = require("cors")
-const PartnersModel = require('./models/Partners')
+const express = require('express');
+const app = express();
+const mongoose = require("mongoose");
+const cors = require("cors");
+const PartnersModel = require('./models/Partners');
 
-app.use(express.json())
-app.use(cors())
+
+//middleware
+app.use(express.json());
+app.use(cors());
 
 // Database connection
 const database = (module.exports = () => {
@@ -47,16 +49,16 @@ app.post('/login', async (req, res) => {
     const user = await PartnersModel.findOne({ email: email });
 
     if (!user) {
-      return res.json("User does not exist");
+      return res.status(401).json("User does not exist");
     }
 
     // Compare entered password with hashed password
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (isMatch) {
-      res.json("Successfully Login");
+      res.status(200).json("Successfully Login");
     } else {
-      res.json("Incorrect password");
+      res.status(401).json("Incorrect password");
     }
 
   } catch (err) {
@@ -80,11 +82,11 @@ app.post('/register', async (req, res) => {
     });
 
     const savedPartner = await newPartner.save();
-    res.json(savedPartner);
+    res.status(200).json(savedPartner);
 
   } catch (err) {
     console.error(err);
-    res.status(400).json("User already exists");
+    res.status(409).json("User already exists");
   }
 });
 
@@ -92,3 +94,4 @@ app.post('/register', async (req, res) => {
 app.listen(3001, () => {
   console.log("Server is running on port 3001");
 });
+
