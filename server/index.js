@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const bcrypt = require("bcryptjs");
 const express = require('express');
 const app = express();
@@ -5,13 +6,15 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const PartnersModel = require('./models/Partners');
 
+// Generate a random encryption key
+const encryptionKey = crypto.randomBytes(32); // Generate a 32-byte encryption key
 
 //middleware
 app.use(express.json());
 app.use(cors());
 
 // Database connection
-const database = (module.exports = () => {
+const database = () => {
   const connectionParams = {};
   try {
     mongoose.connect(
@@ -23,7 +26,7 @@ const database = (module.exports = () => {
     console.log(error);
     console.log("Database connection failed");
   }
-});
+};
 
 database();
 
@@ -39,6 +42,27 @@ const hashPassword = async (password) => {
   }
 };
 
+// Encryption function
+function encryptData(data) {
+    const cipher = crypto.createCipheriv('aes-256-cbc', encryptionKey, Buffer.alloc(16));
+    let encrypted = cipher.update(data, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    return encrypted;
+}
+
+// Decryption function
+function decryptData(encryptedData) {
+  try {
+      const decipher = crypto.createDecipheriv('aes-256-cbc', encryptionKey, Buffer.alloc(16));
+      let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      return decrypted;
+  } catch (error) {
+      console.error('Decryption error:', error);
+      throw new Error('Error decrypting data');
+  }
+}
+
 // APIS
 
 app.post('/login', async (req, res) => {
@@ -52,8 +76,9 @@ app.post('/login', async (req, res) => {
       return res.status(401).json("User does not exist");
     }
 
-    // Compare entered password with hashed password
-    const isMatch = await bcrypt.compare(password, user.password);
+    // Compare entered password with decrypted password
+    const decryptedPassword = decryptData(user.password); // Decrypt stored password
+    const isMatch = await bcrypt.compare(password, decryptedPassword);
 
     if (isMatch) {
       res.status(200).json("Successfully Login");
@@ -74,10 +99,13 @@ app.post('/register', async (req, res) => {
     // Hash password before saving
     const hashedPassword = await hashPassword(password);
 
-    // Create new user with hashed password
+    // Encrypt password before saving to database
+    const encryptedPassword = encryptData(hashedPassword);
+
+    // Create new user with encrypted password
     const newPartner = new PartnersModel({
       email,
-      password: hashedPassword,
+      password: encryptedPassword,
       name
     });
 
@@ -94,4 +122,3 @@ app.post('/register', async (req, res) => {
 app.listen(3001, () => {
   console.log("Server is running on port 3001");
 });
-
