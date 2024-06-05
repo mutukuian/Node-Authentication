@@ -9,6 +9,7 @@ const PartnersModel = require('./models/Partners');
 
 // Generate a random encryption key
 const encryptionKey = crypto.randomBytes(32); // Generate a 32-byte encryption key
+const iv = crypto.randomBytes(16); // Generate a 16-byte IV
 
 function generateSecureString(length) {
   return crypto.randomBytes(length).toString('hex');
@@ -17,7 +18,7 @@ function generateSecureString(length) {
 const secureString = generateSecureString(32); // Generate a 32-character (256-bit) secure string
 console.log(secureString);
 
-//middleware
+// Middleware
 app.use(express.json());
 app.use(cors());
 
@@ -33,6 +34,7 @@ const database = () => {
   } catch (error) {
     console.log(error);
     console.log("Database connection failed");
+    process.exit(1); // Exit process with failure
   }
 };
 
@@ -40,7 +42,7 @@ database();
 
 // Password hashing function
 const hashPassword = async (password) => {
-  const saltRounds = 10; 
+  const saltRounds = 10;
   try {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     return hashedPassword;
@@ -52,27 +54,28 @@ const hashPassword = async (password) => {
 
 // Encryption function
 function encryptData(data) {
-    const cipher = crypto.createCipheriv('aes-256-cbc', encryptionKey, Buffer.alloc(16));
-    let encrypted = cipher.update(data, 'utf8', 'hex');
-    encrypted += cipher.final('hex');
-    return encrypted;
+  const cipher = crypto.createCipheriv('aes-256-cbc', encryptionKey, iv);
+  let encrypted = cipher.update(data, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  return `${iv.toString('hex')}:${encrypted}`; // Return IV along with encrypted data
 }
 
 // Decryption function
 function decryptData(encryptedData) {
   try {
-      const decipher = crypto.createDecipheriv('aes-256-cbc', encryptionKey, Buffer.alloc(16));
-      let decrypted = decipher.update(encryptedData, 'hex', 'utf8');
-      decrypted += decipher.final('utf8');
-      return decrypted;
+    const [ivHex, encrypted] = encryptedData.split(':');
+    const ivBuffer = Buffer.from(ivHex, 'hex');
+    const decipher = crypto.createDecipheriv('aes-256-cbc', encryptionKey, ivBuffer);
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
   } catch (error) {
-      console.error('Decryption error:', error);
-      throw new Error('Error decrypting data');
+    console.error('Decryption error:', error);
+    throw new Error('Error decrypting data');
   }
 }
 
-// APIS
-
+// APIs
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
@@ -89,9 +92,9 @@ app.post('/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, decryptedPassword);
 
     if (isMatch) {
-      //generate jwt token
-      const token = jwt.sign({userId: user._id},secureString,{expiresIn:'30s'})
-      res.status(200).json({token});
+      // Generate JWT token
+      const token = jwt.sign({ userId: user._id }, secureString, { expiresIn: '30s' });
+      res.status(200).json({ status:"Success", message: "Login successfully",token });
     } else {
       res.status(401).json("Incorrect password");
     }
@@ -119,8 +122,8 @@ app.post('/register', async (req, res) => {
       name
     });
 
-    const savedPartner = await newPartner.save();
-    res.status(200).json(savedPartner);
+    const userData = await newPartner.save();
+    res.status(200).json({ status:"Success",message: "Registration successful" ,userData });
 
   } catch (err) {
     console.error(err);
@@ -141,7 +144,7 @@ function verifyToken(req, res, next) {
     return res.status(401).json("Unauthorized: No token provided");
   }
 
-  jwt.verify(token, 'your_secret_key', (err, decoded) => {
+  jwt.verify(token, secureString, (err, decoded) => {
     if (err) {
       return res.status(401).json("Unauthorized: Invalid token");
     }
