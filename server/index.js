@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+require('dotenv').config();
 const crypto = require('crypto');
 const bcrypt = require("bcryptjs");
 const express = require('express');
@@ -7,16 +8,23 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const PartnersModel = require('./models/Partners');
 
+
+
 // Generate a random encryption key
-const encryptionKey = crypto.randomBytes(32); // Generate a 32-byte encryption key
-const iv = crypto.randomBytes(16); // Generate a 16-byte IV
+const encryptionKey = Buffer.from(process.env.ENCRYPTION_KEY,'hex'); // Generate a 32-byte encryption key
+if (encryptionKey.length !== 32) {
+  throw new Error('Encryption key must be 32 bytes (64 hex characters)');
+}
+//console.log(encryptionKey)
+const iv = crypto.randomBytes(16);
+//console.log(iv) // Generate a 16-byte IV
 
 function generateSecureString(length) {
   return crypto.randomBytes(length).toString('hex');
 }
 
-const secureString = generateSecureString(32); // Generate a 32-character (256-bit) secure string
-console.log(secureString);
+const secureString = process.env.SECURE_STRING; // Generate a 32-character (256-bit) secure string 
+//console.log(secureString);
 
 // Middleware
 app.use(express.json());
@@ -27,7 +35,7 @@ const database = () => {
   const connectionParams = {};
   try {
     mongoose.connect(
-      'mongodb+srv://mutukui940:gXa1lZndASK9vim8@cluster0.uh75qkt.mongodb.net/JavaSelfDriveAuth',
+      process.env.MONGO_URI,
       connectionParams
     );
     console.log("Database connected successfully");
@@ -37,6 +45,7 @@ const database = () => {
     process.exit(1); // Exit process with failure
   }
 };
+
 
 database();
 
@@ -153,6 +162,31 @@ function verifyToken(req, res, next) {
     next();
   });
 }
+
+// Middleware to check token expiration
+function checkTokenExpiration(req, res, next) {
+  const token = req.headers['authorization'];
+
+  if (!token) {
+    return res.status(401).json("Unauthorized: No token provided");
+  }
+
+  jwt.verify(token, secureString, (err, decoded) => {
+    if (err) {
+      if (err.name === 'TokenExpiredError') {
+        // Token expired, provide user-friendly message
+        return res.status(401).json("Token expired. Please log in again to obtain a new token.");
+      } else {
+        // Other token verification errors
+        return res.status(401).json("Unauthorized: Invalid token");
+      }
+    }
+
+    req.userId = decoded.userId;
+    next();
+  });
+}
+
 
 // Server Up
 app.listen(3001, () => {
