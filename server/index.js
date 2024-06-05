@@ -1,3 +1,4 @@
+const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const bcrypt = require("bcryptjs");
 const express = require('express');
@@ -8,6 +9,13 @@ const PartnersModel = require('./models/Partners');
 
 // Generate a random encryption key
 const encryptionKey = crypto.randomBytes(32); // Generate a 32-byte encryption key
+
+function generateSecureString(length) {
+  return crypto.randomBytes(length).toString('hex');
+}
+
+const secureString = generateSecureString(32); // Generate a 32-character (256-bit) secure string
+console.log(secureString);
 
 //middleware
 app.use(express.json());
@@ -32,7 +40,7 @@ database();
 
 // Password hashing function
 const hashPassword = async (password) => {
-  const saltRounds = 10; // Adjust saltRounds as needed
+  const saltRounds = 10; 
   try {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     return hashedPassword;
@@ -81,7 +89,9 @@ app.post('/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, decryptedPassword);
 
     if (isMatch) {
-      res.status(200).json("Successfully Login");
+      //generate jwt token
+      const token = jwt.sign({userId: user._id},secureString,{expiresIn:'30s'})
+      res.status(200).json({token});
     } else {
       res.status(401).json("Incorrect password");
     }
@@ -117,6 +127,29 @@ app.post('/register', async (req, res) => {
     res.status(409).json("User already exists");
   }
 });
+
+// Protected route example
+app.get('/protected', verifyToken, (req, res) => {
+  res.status(200).json("Protected route accessed");
+});
+
+// Middleware function to verify JWT token
+function verifyToken(req, res, next) {
+  const token = req.headers['authorization'];
+
+  if (!token) {
+    return res.status(401).json("Unauthorized: No token provided");
+  }
+
+  jwt.verify(token, 'your_secret_key', (err, decoded) => {
+    if (err) {
+      return res.status(401).json("Unauthorized: Invalid token");
+    }
+
+    req.userId = decoded.userId;
+    next();
+  });
+}
 
 // Server Up
 app.listen(3001, () => {
