@@ -162,9 +162,6 @@ app.post('/register', async (req, res) => {
       error: "Password must be at least 8 characters long and include at least one lowercase letter, one uppercase letter, one numeric digit, and one special character"
     });
   }
-  
-
-  
 
   try {
     // Hash password before saving
@@ -181,8 +178,10 @@ app.post('/register', async (req, res) => {
 });
 
 
-    const userData = await newPartner.save();
-    res.status(200).json({ status:"Success",message: "Registration successful" ,userData });
+    const userData = await newPartner.save();  
+     // Remove the password from the user data before sending the response
+    const { password: userPassword, ...userWithoutPassword } = userData.toObject();
+    res.status(200).json({ status:"Success",message: "Registration successful" ,userData:userWithoutPassword });
 
   } catch (err) {
     console.error(err);
