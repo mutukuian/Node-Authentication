@@ -61,10 +61,11 @@ const hashPassword = async (password) => {
   }
 };
 
+//Advanced Encryption Standard (AES)-symmetric 
 // Encryption function
 function encryptData(data) {
   const cipher = crypto.createCipheriv('aes-256-cbc', encryptionKey, iv);
-  let encrypted = cipher.update(data, 'utf8', 'hex');
+  let encrypted = cipher.update(data, 'utf8', 'hex');//encoded in utf-8 and encrypted in hexadecimal
   encrypted += cipher.final('hex');
   return `${iv.toString('hex')}:${encrypted}`; // Return IV along with encrypted data
 }
@@ -87,6 +88,29 @@ function decryptData(encryptedData) {
 // APIs
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Validate email format
+if (!email || !emailRegex.test(email)) {
+  return res.status(400).json({ error: "Valid email address is required" });
+}
+
+
+   // Check if email or password is missing
+   if (!email || !password) {
+    return res.status(400).json({ error: "Email and password are required" });
+  }
+
+  // Validate password strength
+const passwordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*]).{8,}$/;
+
+if (!password || !passwordRegex.test(password)) {
+  return res.status(400).json({
+    error: "Password must be at least 8 characters long and include at least one lowercase letter, one uppercase letter, one numeric digit, and one special character"
+  });
+}
+
 
   try {
     // Find user by email
@@ -117,6 +141,31 @@ app.post('/login', async (req, res) => {
 app.post('/register', async (req, res) => {
   const { email, password, name } = req.body;
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  // Validate email format
+  if (!email || !emailRegex.test(email)) {
+    return res.status(400).json({ error: "Valid email address is required" });
+  }
+  
+  
+      // Check if email, password, or name is missing
+   if (!email || !password || !name) {
+    return res.status(400).json({ error: "Email, password, and name are required" });
+  }
+  
+    // Validate password strength
+  const passwordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*]).{8,}$/;
+  
+  if (!password || !passwordRegex.test(password)) {
+    return res.status(400).json({
+      error: "Password must be at least 8 characters long and include at least one lowercase letter, one uppercase letter, one numeric digit, and one special character"
+    });
+  }
+  
+
+  
+
   try {
     // Hash password before saving
     const hashedPassword = await hashPassword(password);
@@ -138,6 +187,7 @@ app.post('/register', async (req, res) => {
     console.error(err);
     res.status(409).json("User already exists");
   }
+
 });
 
 // Protected route example
