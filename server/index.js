@@ -174,11 +174,12 @@ app.post('/register', async (req, res) => {
     const encryptedPassword = encryptData(hashedPassword);
 
     // Create new user with encrypted password
-    const newPartner = new PartnersModel({
-      email,
-      password: encryptedPassword,
-      name
-    });
+  const newPartner = new PartnersModel({
+    email: email,
+    password: encryptedPassword,
+    name: name
+});
+
 
     const userData = await newPartner.save();
     res.status(200).json({ status:"Success",message: "Registration successful" ,userData });
