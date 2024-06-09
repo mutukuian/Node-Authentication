@@ -3,28 +3,31 @@ import { Link } from "react-router-dom";
 import axios from 'axios';
 import { useNavigate } from "react-router-dom";
 
-function Login(){
-
-    const [email,setEmail] = useState("");
-    const [password,setPassword] = useState("");
+function Login() {
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const navigate = useNavigate();
 
-    const handleSubmit = (e) =>{
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        axios.post('http://localhost:3001/login', { email, password })
-            .then(result => {
-                console.log(result);
-                if(result.data === "Success"){
-                    navigate('/home');
-                } else {
-                    setError("Invalid Credentials.Please try again.");
-                }
-            })
-            .catch(err => console.log(err));
+        try {
+            const response = await axios.post('http://localhost:3001/login', { email, password });
+            console.log(response);
+            if(response.data.status === "Success") {
+                // Store JWT token in localStorage or context
+                localStorage.setItem('token', response.data.token);
+                navigate('/home');
+            } else {
+                setError(response.data.message || "Invalid credentials. Please try again.");
+            }
+        } catch (err) {
+            console.log(err);
+            setError("An error occurred. Please try again.");
+        }
     };
 
-    return(
+    return (
         <div className="d-flex justify-content-center align-items-center bg-secondary vh-100">
             <div className="bg-white p-3 rounded w-25">
                 <h2>Login</h2>
