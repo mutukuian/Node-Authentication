@@ -99,7 +99,7 @@ app.post('/login', async (req, res) => {
     const user = await PartnersModel.findOne({ email: email });
 
     if (!user) {
-      return res.status(401).json('User does not exist');
+      return res.status(404).json({ error: 'Email not found' });
     }
 
     // Decrypt stored password
@@ -108,8 +108,8 @@ app.post('/login', async (req, res) => {
 
     if (isMatch) {
       // Generate JWT token
-      const token = jwt.sign({ userId: user._id }, secureString, { expiresIn: '1h' });
-      res.status(200).json({ status: 'Success', message: 'Login successfully', token });
+      const token = jwt.sign({ userId: user._id, name: user.name }, secureString, { expiresIn: '1h' });
+      res.status(200).json({ status: 'Success', message: 'Login successfully', name: user.name, token });
     } else {
       res.status(401).json('Incorrect password');
     }
@@ -146,6 +146,13 @@ app.post('/register', async (req, res) => {
   }
 
   try {
+
+    // Check if email already exists
+    const existingUser = await PartnersModel.findOne({ email: email });
+    if (existingUser) {
+      return res.status(409).json({ error: 'Email already registered' });
+    }
+
     // Hash password before saving
     const hashedPassword = await hashPassword(password);
 
