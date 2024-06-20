@@ -14,7 +14,16 @@ const PartnersSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true,
-  }
+  },
+  createdAt:{
+    type:String,
+    default:Date.now
+  },
+  status:{
+    type:String,
+    enum:['active','inactive'],
+    default:'active'
+  },
 });
 
 // Create the model

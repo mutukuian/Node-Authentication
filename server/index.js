@@ -108,7 +108,10 @@ app.post('/login', async (req, res) => {
 
     if (isMatch) {
       // Generate JWT token
-      const token = jwt.sign({ userId: user._id, name: user.name }, secureString, { expiresIn: '1h' });
+     
+     const token = jwt.sign({ userId: user._id, name: user.name }, secureString, { expiresIn: '1h' });
+     console.log("Sending response:", { status: 'Success', message: 'Login successfully', token,name: user.name });
+
       res.status(200).json({ status: 'Success', message: 'Login successfully', name: user.name, token });
     } else {
       res.status(401).json('Incorrect password');
@@ -163,16 +166,19 @@ app.post('/register', async (req, res) => {
     const newPartner = new PartnersModel({
       email: email,
       password: encryptedPassword,
-      name: name
+      name: name,
+      createdAt:new Date(),
+      status:'active'
     });
 
     const userData = await newPartner.save();
     const { password: userPassword, ...userWithoutPassword } = userData.toObject();
+    console.log("Sending response:", { status: 'Success', message: 'Registration successful', userData: userWithoutPassword });
     res.status(200).json({ status: 'Success', message: 'Registration successful', userData: userWithoutPassword });
 
   } catch (err) {
     console.error(err);
-    res.status(409).json('User already exists');
+    res.status(500).json('Server error');
   }
 });
 
